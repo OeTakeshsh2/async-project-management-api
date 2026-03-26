@@ -1,22 +1,25 @@
+from app.core.auth import settings
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     async_sessionmaker,
 )
 from sqlalchemy.orm import DeclarativeBase
 
-DATABASE_URL = "postgresql+asyncpg://postgres:TU_PASS@localhost/project_db"
+#DATABASE_URL = "postgresql+asyncpg://postgres:TU_PASS@localhost/project_db"
+
+
 
 engine = create_async_engine(
-    DATABASE_URL,
+    settings.database_url,
     echo=True,
 )
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
     expire_on_commit=False,
-)
+    )
 
-
+#SQLAlquemy se usa para definir modelos
 class Base(DeclarativeBase):
     pass
 

@@ -1,27 +1,50 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import HTTPException
+from pydantic_settings import BaseSettings
 
-SECRET_KEY = "supersecretkey"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Improve
+# Mejorar diferenciacion de errores , token expired, invalid token, etc.
+# Mejorar tipado
+# Agregar sub 
 
+
+class Settings(BaseSettings):
+    database_url:str
+    secret_key:str
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
 
 def create_access_token(data: dict):
     to_encode = data.copy()
 
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        minutes=settings.access_token_expire_minutes
     )
 
     to_encode.update({"exp": expire})
 
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
+    return jwt.encode(
+            to_encode,
+            settings.secret_key,
+            algorithm=settings.algorithm
+            )
 
 def decode_access_token(token: str):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        payload = jwt.decode(
+                token,
+                settings.secret_key,
+                algorithms=[settings.algorithm]
+                )
+
         return payload
 
     except JWTError:

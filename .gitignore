@@ -1,17 +1,35 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Env files
+.env
+.env.*
+.env.local
+.env.production
+.env.development
 
 # Virtual environments
 .venv/
-.env/
 
 # Poetry
-poetry.lock
+# poetry.lock (polemico)
 
 # OS
 .DS_Store
 
 # IDE
-.vscode/
 .idea/
+
+# Logs
+*.log
+
+# Testing / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Database (si usas SQLite en tests)
+*.db
