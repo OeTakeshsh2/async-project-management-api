@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import HTTPException
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Improve
 # Mejorar diferenciacion de errores , token expired, invalid token, etc.
@@ -10,14 +10,21 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url:str
-    secret_key:str
+    DATABASE_URL:str
+    SECRET_KEY:str
+    
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB:str
+
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES : int = 30
+    
 
-
-    class Config:
-        env_file = ".env"
+    model_config=SettingsConfigDict(
+        env_file = ".env",
+        extra="ignore"
+    )
 
 settings = Settings()
 

@@ -20,8 +20,8 @@ async def lifespan(_: FastAPI):
         except Exception as e:
             print(f"db not ready yet (attempt:{attempt + 1}): {e}")
             await asyncio.sleep(2)
-        else:
-            print("could not connect to the database")
+    else:
+        print("could not connect to the database")
     yield
     # shutdown (opcional)
 

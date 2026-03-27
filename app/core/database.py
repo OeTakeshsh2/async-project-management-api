@@ -5,12 +5,9 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-#DATABASE_URL = "postgresql+asyncpg://postgres:TU_PASS@localhost/project_db"
-
-
 
 engine = create_async_engine(
-    settings.database_url,
+    settings.DATABASE_URL,
     echo=True,
 )
 
