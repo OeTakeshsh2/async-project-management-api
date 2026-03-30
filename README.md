@@ -1,21 +1,21 @@
-# Project Management API
+# Project Management API 🚀
 
-Backend REST API built with FastAPI for managing users, projects, and tasks.
+REST API designed with production practices, built with FastAPI, featuring JWT authentication, async database handling, and a scalable layered architecture.
 
 ---
 
-## 🚀 Tech Stack
+## Tech Stack
 
 * Python 3.14
 * FastAPI
 * SQLAlchemy (async)
 * PostgreSQL
-* Poetry
+* Poetry / Docker
 * JWT Authentication
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 app/
@@ -28,7 +28,16 @@ app/
 
 ---
 
-## ⚙️ Setup
+## Setup
+
+### 0. Environment variables
+
+Create a `.env` file with:
+
+```env
+DATABASE_URL=...
+SECRET_KEY=...
+```
 
 ### 1. Install dependencies
 
@@ -44,9 +53,19 @@ poetry run uvicorn app.main:app --reload
 
 ---
 
-## 🔐 Authentication
+## Run with Docker
+
+```bash
+docker-compose up --build
+```
+
+---
+
+## Authentication
 
 This API uses **JWT (JSON Web Tokens)** for authentication.
+
+Tokens are stateless and must be included in the `Authorization` header for protected endpoints.
 
 ### Flow
 
@@ -68,7 +87,7 @@ curl -X GET "http://127.0.0.1:8000/users/me" \
 
 ---
 
-## 📌 Available Endpoints
+## API Endpoints
 
 ### Users
 
@@ -78,16 +97,16 @@ curl -X GET "http://127.0.0.1:8000/users/me" \
 
 ---
 
-## 🧠 Design Decisions
+## Design Decisions
 
 * **Async SQLAlchemy** → better performance & scalability
-* **Layered architecture** → separation of concerns
+* **Layered architecture** → improves maintainability and testability
 * **JWT auth** → stateless authentication
 * **PostgreSQL** → production-ready database
 
 ---
 
-## 🗄️ Database Design
+## Database Design
 
 ### users
 
@@ -99,7 +118,7 @@ curl -X GET "http://127.0.0.1:8000/users/me" \
 
 ---
 
-## ⚠️ Notes
+## Security & Implementation Notes
 
 * Passwords are securely hashed using **bcrypt**
 * Tokens include expiration (`exp`)
@@ -107,17 +126,7 @@ curl -X GET "http://127.0.0.1:8000/users/me" \
 
 ---
 
-## 📌 TODO
-
-* [ ] Projects & Tasks models
-* [ ] Role-based authorization
-* [ ] Refresh tokens
-* [ ] Docker setup
-* [ ] Automated tests
-
----
-
 ## 🧑‍💻 Author
 
-Backend Developer focused on Python & scalable APIs.
+Backend developer focused on building secure and scalable APIs with Python.
 

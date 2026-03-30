@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
+from jose.exceptions import ExpiredSignatureError
 from fastapi import HTTPException
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,23 +11,28 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    DATABASE_URL:str
-    SECRET_KEY:str
-    
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB:str
+    database_url: str
+    secret_key: str
 
-    algorithm: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES : int = 30
-    
+    postgres_user: str
+    postgres_password: str
+    postgres_db: str
 
-    model_config=SettingsConfigDict(
-        env_file = ".env",
+    algorithm: str
+    access_token_expire_minutes: int
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
         extra="ignore"
     )
 
 settings = Settings()
+
+def create_refresh_token(data:dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({"exp":expire})
+    return jwt.encode(to_encode,settings.secret_key,algorithm=settings.algorithm)
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -35,7 +41,10 @@ def create_access_token(data: dict):
         minutes=settings.access_token_expire_minutes
     )
 
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "type": "access"
+        })
 
     return jwt.encode(
             to_encode,
@@ -53,6 +62,12 @@ def decode_access_token(token: str):
                 )
 
         return payload
+
+    except ExpiredSignatureError:
+        raise HTTPException(
+                statuscode=401,
+                details="Token expired"
+                )
 
     except JWTError:
         raise HTTPException(

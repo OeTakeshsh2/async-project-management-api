@@ -3,11 +3,13 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.core.database import engine, Base
 from app.routes import router
-
+from app.core.auth import settings
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-
+    
+    print("SETTINGS:", settings.model_dump())
+    
     for attempt in range(5):
         # startup
         try:
