@@ -3,6 +3,7 @@ from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError
 from fastapi import HTTPException
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from datetime import datetime,timedelta,timezone
 
 # Improve
 # Mejorar diferenciacion de errores , token expired, invalid token, etc.
@@ -31,7 +32,10 @@ settings = Settings()
 def create_refresh_token(data:dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=7)
-    to_encode.update({"exp":expire})
+    to_encode.update({
+        "exp":expire,
+        "type":"refresh"
+        })
     return jwt.encode(to_encode,settings.secret_key,algorithm=settings.algorithm)
 
 def create_access_token(data: dict):

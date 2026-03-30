@@ -43,6 +43,7 @@ async def create_user(
 
 @router.get("/me")
 async def get_me(current_user: User = Depends(get_current_user)):
+
     return {
             "id" : current_user.id,
             "email" : current_user.email
@@ -86,7 +87,8 @@ async def refresh_token(token: str = Depends(oauth2_scheme)):
         )
 
         email = payload.get("sub")
-        if email is None:
+        token_type = payload.get("type")
+        if email is None or token_type != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token")
 
     except JWTError:
