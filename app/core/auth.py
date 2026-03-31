@@ -1,12 +1,16 @@
 import hashlib
 from datetime import datetime, timedelta, timezone
+from typing import Optional
+
 from jose import jwt, JWTError, ExpiredSignatureError
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import select, delete, String, Integer, ForeignKey, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import Base
+
+from app.core.database import Base, get_db
+from app.models.user import User, UserToken 
 
 
 class Settings(BaseSettings):
@@ -14,6 +18,7 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str
     access_token_expire_minutes: int
+    database_url: str  
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -24,23 +29,8 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
-# ==================== MODELO DE TOKENS ====================
-class UserToken(Base):
-    """Tabla para almacenar hashes de refresh tokens activos (revocación + single session)"""
-    __tablename__ = "user_tokens"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
-    token_hash: Mapped[str] = mapped_column(String(64), index=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
-
-
 # ==================== HELPERS ====================
-def _base_user_payload(user) -> dict:
+def _base_user_payload(user: User) -> dict:  
     return {"sub": user.email, "user_id": user.id}
 
 
@@ -69,11 +59,11 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def create_user_access_token(user) -> str:
+def create_user_access_token(user: User) -> str:
     return create_access_token(_base_user_payload(user))
 
 
-def create_user_refresh_token(user) -> str:
+def create_user_refresh_token(user: User) -> str:
     return create_refresh_token(_base_user_payload(user))
 
 
@@ -141,3 +131,40 @@ def decode_access_token(token: str) -> dict:
 
 def decode_refresh_token(token: str) -> dict:
     return decode_token(token, "refresh")
+
+
+# ==================== DEPENDENCIAS DE AUTENTICACIÓN ====================
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """
+    Obtiene el usuario autenticado según el access token que llegue.
+    """
+    # 1. Decodificar access token
+    payload = decode_access_token(token)
+
+    # 2. Extraer user_id
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido: user_id no encontrado"
+        )
+
+    # 3. Buscar usuario en BD
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no encontrado"
+        )
+
+    return user 

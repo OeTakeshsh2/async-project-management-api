@@ -14,8 +14,7 @@ Se agrego una validacion en endpoint /me para evitar acceso con refresh tokens
 Nota
 !Refresh Token sigue permitiendo reusarse, corregi esto a futuro
 
-
-
+---
 
 [Fecha]
 03/31/2026
@@ -40,3 +39,27 @@ Solución
 
 Nota de seguridad (pendiente)
 - Refresh Token todavía permite reutilización (reuse attack). Próxima mejora: implementar Refresh Token Rotation (invalidar el usado y emitir uno nuevo en cada /refresh).
+
+
+---
+
+
+[Fecha] 03/31/2026
+
+## Problema
+Falta de proteccion en rutas y dependencia `get_current_user` no implementada.
+
+## Causa
+- No existia `get_current_user()` para extraer usuario desde access token.
+- Faltaba `get_db()` en `database.py` para inyectar sesiones.
+- Endpoints no tenian autenticacion.
+
+## Solucion
+- Se creo `get_db()` en `core/database.py`.
+- Se creo `get_current_user()` en `core/dependencies.py` con decode de access token y busqueda en BD.
+- Se protegio endpoint `/users/me` con `Depends(get_current_user)`.
+
+## Estado actual
+- `/me` requiere token valido
+- 401 si token falta, expira o es invalido
+- Dependencia lista para proteger mas endpoints
