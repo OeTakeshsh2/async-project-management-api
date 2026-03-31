@@ -1,35 +1,177 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Env files
+# =========================
+# Secrets / environment
+# =========================
 .env
 .env.*
-.env.local
-.env.production
-.env.development
+*.env
+*.key
+*.pem
+secrets.json
 
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# =========================
 # Virtual environments
+# =========================
+venv/
+env/
+.venv/ 
+.env
+# =========================
+# Secrets / environment
+# =========================
+.env
+.env.*
+*.env
+*.key
+*.pem
+secrets.json
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# =========================
+# Virtual environments
+# =========================
+venv/
+env/
 .venv/
 
-# Poetry
-# poetry.lock (polemico)
-
-# OS
-.DS_Store
-
-# IDE
-.idea/
-
-# Logs
-*.log
-
+# =========================
 # Testing / coverage
+# =========================
 .coverage
 htmlcov/
 .pytest_cache/
+.tox/
+.nox/
 
-# Database (si usas SQLite en tests)
+# =========================
+# Type checkers / linters
+# =========================
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.pyre/
+
+# =========================
+# Neovim / Vim
+# =========================
+*.swp
+*.swo
+*.swx
+*~
+*.bak
+.undodir/
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# PostgreSQL / databases
+# =========================
+pgdata/
+postgres_data/
+data/
 *.db
+*.sqlite3
+*.dump
+*.sql
+
+# =========================
+# Build artifacts
+# =========================
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# =========================
+# OS / misc
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Docker (optional overrides)
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Testing / coverage
+# =========================
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# =========================
+# Type checkers / linters
+# =========================
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.pyre/
+
+# =========================
+# Neovim / Vim
+# =========================
+*.swp
+*.swo
+*.swx
+*~
+*.bak
+.undodir/
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# PostgreSQL / databases
+# =========================
+pgdata/
+postgres_data/
+data/
+*.db
+*.sqlite3
+*.dump
+*.sql
+
+# =========================
+# Build artifacts
+# =========================
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# =========================
+# OS / misc
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Docker (optional overrides)
+# =========================
+docker-compose.override.yml
