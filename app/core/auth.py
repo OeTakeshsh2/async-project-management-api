@@ -11,23 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import Base, get_db
 from app.models.user import User, UserToken 
-
-
-class Settings(BaseSettings):
-    """Configuración cargada desde .env"""
-    secret_key: str
-    algorithm: str
-    access_token_expire_minutes: int
-    database_url: str  
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore"
-    )
-
-
-settings = Settings()
-
+from app.core.config import settings
 
 # ==================== HELPERS ====================
 def _base_user_payload(user: User) -> dict:  
