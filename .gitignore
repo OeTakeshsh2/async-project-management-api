@@ -139,7 +139,7 @@ htmlcov/
 *~
 *.bak
 .undodir/
-
+pyrightconfig.json
 # =========================
 # Logs
 # =========================

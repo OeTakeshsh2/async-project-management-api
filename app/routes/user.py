@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy import select
@@ -7,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import (
     create_user_access_token,
     create_user_refresh_token,
+    revoke_refresh_token,
     store_refresh_token,
     verify_refresh_token,
     decode_refresh_token,
+    oauth2_scheme
 )
 
 from app.core.security import hash_password, verify_password
@@ -23,9 +26,6 @@ from app.core.dependencies import get_current_user
 from app.core.database import get_db
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-# Esquema de seguridad OAuth2
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 
 
 @router.post("/login")
@@ -47,9 +47,11 @@ async def login(
 
     access_token = create_user_access_token(db_user)
     refresh_token = create_user_refresh_token(db_user)
+    payload = decode_refresh_token(refresh_token)
+    expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
 
     # Guarda hash del refresh token (single session)
-    await store_refresh_token(db, db_user.id, refresh_token)
+    await store_refresh_token(db, db_user.id, refresh_token, expires_at)
 
     return {
         "access_token": access_token,
@@ -57,6 +59,22 @@ async def login(
         "token_type": "bearer"
     }
 
+@router.post("/logout")
+async def logout(
+    token:str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    payload = decode_refresh_token(token)
+    user_id = payload.get("user_id")
+
+    if user_id is None:
+        raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token invalido: user_id no encontrado"
+                )
+
+    await revoke_refresh_token(db,user_id,token)
+    return {"message": "Logout exitoso"}
 
 @router.post("/", response_model=UserResponse)
 async def create_user(

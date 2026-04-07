@@ -1,7 +1,7 @@
-from sqlalchemy import String, Integer, ForeignKey, DateTime, func
+from sqlalchemy import String, Integer, ForeignKey, DateTime, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 
@@ -25,7 +25,7 @@ class UserToken(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, 
         ForeignKey("users.id", ondelete="CASCADE"), 
-        index=True
+        #index=True "aparentemente redundante
     )
     
     token_hash: Mapped[str] = mapped_column(String(64), index=True)
@@ -35,3 +35,9 @@ class UserToken(Base):
     server_default=func.now()  # <-- usa hora del servidor PostgreSQL
     )
 
+    revoked: Mapped[bool] = mapped_column(Boolean,default=False,nullable=False)
+    
+    #a;adir multi-session
+    #device_name
+    #ip_adress
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=True)

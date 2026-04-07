@@ -6,7 +6,7 @@ from jose import jwt, JWTError, ExpiredSignatureError
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import Base, get_db
@@ -50,17 +50,39 @@ def create_user_access_token(user: User) -> str:
 def create_user_refresh_token(user: User) -> str:
     return create_refresh_token(_base_user_payload(user))
 
+# ==================== REVOCACION DE TOKENS =================
+
+async def revoke_refresh_token(db: AsyncSession, user_id: int, token: str) -> None:
+    token_hash = hash_token(token)
+    await db.execute(
+            update(UserToken)
+            .where(
+                UserToken.user_id == user_id,
+                UserToken.token_hash == token_hash
+                )
+            .values(revoked = True)
+            )
+    await db.commit()
 
 # ==================== OPERACIONES EN DB ====================
-async def store_refresh_token(db: AsyncSession, user_id: int, token: str):
-    """Guarda hash del refresh token y elimina el anterior (single session)"""
+
+async def store_refresh_token(
+
+    db: AsyncSession,
+    user_id: int,
+    token: str,
+    expires_at: datetime) -> None:
     refresh_hash = hash_token(token)
     await db.execute(delete(UserToken).where(UserToken.user_id == user_id))
 
-    user_token = UserToken(user_id=user_id, token_hash=refresh_hash)
-    db.add(user_token)
+    new_token = UserToken(
+        user_id=user_id,
+        token_hash=refresh_hash,
+        expires_at=expires_at,
+        revoked=False
+    )
+    db.add(new_token)
     await db.commit()
-
 
 async def verify_refresh_token(db: AsyncSession, user_id: int, token: str) -> bool:
     """Verifica que el hash del refresh token exista en la DB"""
