@@ -4,6 +4,19 @@ from contextlib import asynccontextmanager
 from app.core.database import engine, Base
 from app.routes import router
 from app.core.auth import settings
+from app.middleware.logging import app_logger, setup_logging
+from app.middleware.correlation import CorrelationIdMiddleware
+
+setup_logging(level="INFO")
+
+app = FastAPI(
+    title = "Project Management API",
+    version = "1.0.0",
+    docs_url="/docs",
+    redoc_url="redoc"
+)
+
+app.add_middleware(CorrelationIdMiddleware)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):

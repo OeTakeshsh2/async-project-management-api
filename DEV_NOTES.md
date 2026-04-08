@@ -152,3 +152,31 @@ La aplicación manejaba sesión única (un solo dispositivo activo por usuario),
 - Notificar al usuario por email cuando se inicia una nueva sesión en un dispositivo desconocido.
 
 ---
+
+[Fecha] 08/04/2026 (2)
+
+## Problema
+La aplicación carecía de un sistema de logging estructurado que permitiera rastrear peticiones, depurar errores y auditar eventos de autenticación en producción.
+
+## Causa
+- No se registraban eventos de entrada/salida de los endpoints.
+- No existía un identificador de correlación (correlation ID) para seguir una petición a través de los logs.
+- Los errores y advertencias no quedaban registrados sistemáticamente.
+
+## Solución
+- Se implementó un sistema de logging usando el módulo `logging` estándar de Python.
+- Se agregó el middleware `CorrelationIdMiddleware` que genera/extrae un `X-Correlation-ID` (UUID) y lo propaga mediante `contextvars`.
+- Se configuró un `CorrelationIdFilter` para añadir el correlation ID a cada registro de log.
+- Se añadieron logs informativos (`info`) y de advertencia (`warning`) en todos los endpoints de autenticación: login, logout, refresh, create_user, get_me.
+- Se registran intentos, éxitos y fallos (con detalles como email, user_id, causa del error).
+- La salida de logs se envía a la consola (stdout) con formato: `timestamp - name - level - [correlation_id] - message`.
+
+## Resultado
+- Ahora es posible rastrear una petición completa desde que entra hasta que sale gracias al correlation ID.
+- Los logs permiten monitorear la salud de la API y depurar problemas en producción.
+- Todos los tests (10) siguen pasando sin cambios adicionales.
+- La aplicación está lista para ser desplegada con trazabilidad.
+
+## Nota
+El nivel de log se puede cambiar entre `INFO` y `DEBUG` mediante la variable de entorno `LOG_LEVEL` (pendiente de implementar). Por ahora está fijo en `INFO` en `main.py`.
+
