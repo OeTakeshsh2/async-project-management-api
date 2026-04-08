@@ -81,3 +81,74 @@ Alembic no podía generar ni aplicar migraciones por incompatibilidad con el mot
 - La base de datos está sincronizada con los modelos.
 - La aplicación sigue funcionando con `asyncpg` sin cambios.
 - El flujo de migraciones ahora es compatible con el proyecto.
+
+---
+
+[Fecha] 07/04/2026
+
+## Problema
+Los tests de integración fallaban por múltiples razones: falta de configuración de pytest-asyncio, errores de conexión a PostgreSQL (host `postgres_db` no resuelto desde el host), problemas con variables de entorno no cargadas, y falta de creación de tablas en la base de datos de pruebas.
+
+## Causa
+- El archivo `tests/conftest.py` no cargaba `load_dotenv()` antes de importar `app.main`, causando errores de validación en `Settings`.
+- Se usaba `@pytest.fixture` en lugar de `@pytest_asyncio.fixture` para fixtures asíncronas.
+- El cliente HTTP con `httpx.AsyncClient` necesitaba `ASGITransport(app=app)` para probar FastAPI.
+- La base de datos de pruebas apuntaba a PostgreSQL con nombre de host `postgres_db` (solo válido dentro de Docker), generando errores de resolución de DNS.
+- Se intentó usar Alembic para crear las tablas de prueba, pero las migraciones no se generaban correctamente por falta de importación de modelos en `env.py` y conflictos de permisos.
+- Además, se presentó un error de asyncio `Future attached to a different loop` al usar fixtures con `scope="session"`.
+
+## Solución
+- Se reordenó `conftest.py` para definir variables de entorno (`os.environ`) **antes** de cualquier importación de la app, eliminando la dependencia del archivo `.env` para los tests.
+- Se cambió a `@pytest_asyncio.fixture` para la fixture `client`.
+- Se reemplazó `httpx.AsyncClient(app=app)` por `ASGITransport(app=app)`.
+- Se optó por usar **SQLite en memoria** (`sqlite+aiosqlite:///:memory:`) como base de datos de pruebas, eliminando la necesidad de PostgreSQL y los problemas de red.
+- Se agregó `aiosqlite` como dependencia de desarrollo.
+- Se configuró una fixture `setup_db` con `scope="session"` que crea las tablas una sola vez, y una fixture `clean_db` con `autouse=True` que limpia los datos entre tests (sin destruir las tablas).
+- Se corrigió el error del loop asíncrono usando un único engine compartido y evitando `scope="function"` con recreación de tablas.
+- Se completaron los tests unitarios e integración para los endpoints de autenticación (registro, login, refresh, logout, perfil, flujo completo).
+- Se ajustaron los headers de autorización en los tests para usar `Authorization: Bearer {token}` con el espacio correcto.
+
+## Nota
+Los tests ahora pasan completamente (10 tests exitosos) y la suite se ejecuta en menos de 3 segundos. El uso de SQLite en memoria para pruebas es una práctica común y acelera el desarrollo, aunque se recomienda mantener un entorno de integración con PostgreSQL para validar características específicas del motor. Los tests cubren los flujos principales de autenticación y servirán como red de seguridad para futuros cambios.
+
+---
+
+[Fecha] 08/04/2026
+
+## Problema
+La aplicación manejaba sesión única (un solo dispositivo activo por usuario), lo cual no es el comportamiento más común en aplicaciones web modernas donde los usuarios esperan estar conectados desde múltiples dispositivos (web, móvil, tablet) simultáneamente.
+
+## Causa
+- La función `store_refresh_token` en `app/core/auth.py` realizaba un `DELETE` de todos los refresh tokens anteriores del usuario antes de insertar uno nuevo, limitando la sesión a un solo token activo.
+- No se almacenaba información del dispositivo (nombre, IP) ni se registraba el último uso de cada sesión.
+- No existían endpoints para listar ni revocar sesiones activas remotamente.
+- Además, el test `test_refresh_token` fallaba porque el nuevo access token generado era idéntico al original (falta de unicidad en el payload del JWT).
+
+## Solución
+- Se modificó la tabla `user_tokens` agregando las columnas:
+  - `device_name` (VARCHAR 100) – nombre del dispositivo (ej. "Chrome en Windows").
+  - `ip_address` (VARCHAR 45) – dirección IP del cliente.
+  - `last_used_at` (TIMESTAMP WITH TIME ZONE) – última vez que se usó el refresh token.
+- Se cambió `store_refresh_token` para **insertar** un nuevo token sin eliminar los anteriores, permitiendo múltiples tokens activos por usuario.
+- Se capturó en el endpoint `/login` el `User-Agent` y la IP del cliente (usando `fastapi.Request`) y se almacenan junto con el refresh token.
+- Se agregaron dos nuevos endpoints protegidos:
+  - `GET /users/sessions` – lista todas las sesiones activas del usuario autenticado.
+  - `DELETE /users/sessions/{session_id}` – revoca una sesión específica (logout remoto).
+- Se mejoró `verify_refresh_token` para que solo considere tokens no revocados (`revoked == False`).
+- Para garantizar unicidad de cada token (y que el test `test_refresh_token` pase), se añadió el campo `jti` (JWT ID) con un UUID aleatorio en el payload de access y refresh tokens.
+- Se corrigió el test `test_refresh_token` (que ahora pasa sin necesidad de `sleep`).
+
+## Estado actual
+- La API permite múltiples sesiones simultáneas por usuario.
+- Cada login genera un nuevo refresh token sin invalidar los anteriores.
+- El logout revoca únicamente el token utilizado.
+- El usuario puede listar y cerrar sesiones remotamente desde otros dispositivos.
+- Todos los tests (10) pasan exitosamente.
+- La seguridad mejora gracias al `jti` único por token y la posibilidad de revocación individual.
+
+## Pendiente / Mejoras futuras
+- Implementar límite máximo de sesiones activas por usuario (ej. 5 dispositivos).
+- Añadir rotación de refresh tokens (emitir uno nuevo en cada `/refresh` y revocar el usado).
+- Notificar al usuario por email cuando se inicia una nueva sesión en un dispositivo desconocido.
+
+---

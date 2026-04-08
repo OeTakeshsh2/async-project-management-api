@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -26,22 +27,30 @@ def hash_token(token: str) -> str:
 def create_access_token(data: dict) -> str:
     if "sub" not in data or "user_id" not in data:
         raise ValueError("El payload requiere 'sub' y 'user_id'.")
-
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-    to_encode.update({"exp": expire, "type": "access"})
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=settings.access_token_expire_minutes)
+    to_encode.update({
+        "exp": expire,
+        "iat": now,
+        "jti": str(uuid.uuid4()),   # ← unico por token
+        "type": "access"
+    })
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
-
 
 def create_refresh_token(data: dict) -> str:
     if "sub" not in data or "user_id" not in data:
         raise ValueError("El payload requiere 'sub' y 'user_id'.")
-
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=7)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=7)
+    to_encode.update({
+        "exp": expire,
+        "iat": now,
+        "jti": str(uuid.uuid4()),
+        "type": "refresh"
+    })
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
-
 
 def create_user_access_token(user: User) -> str:
     return create_access_token(_base_user_payload(user))
@@ -65,37 +74,38 @@ async def revoke_refresh_token(db: AsyncSession, user_id: int, token: str) -> No
     await db.commit()
 
 # ==================== OPERACIONES EN DB ====================
-
 async def store_refresh_token(
-
     db: AsyncSession,
     user_id: int,
     token: str,
-    expires_at: datetime) -> None:
+    expires_at: datetime,
+    device_name: Optional[str] = None,    
+    ip_address: Optional[str] = None      
+) -> None:
     refresh_hash = hash_token(token)
-    await db.execute(delete(UserToken).where(UserToken.user_id == user_id))
-
     new_token = UserToken(
         user_id=user_id,
         token_hash=refresh_hash,
         expires_at=expires_at,
-        revoked=False
+        revoked=False,
+        device_name=device_name,
+        ip_address=ip_address,
+        last_used_at=datetime.now(timezone.utc)
     )
     db.add(new_token)
     await db.commit()
 
 async def verify_refresh_token(db: AsyncSession, user_id: int, token: str) -> bool:
-    """Verifica que el hash del refresh token exista en la DB"""
+    """Verifica que el hash del refresh token exista en la DB y NO esté revocado"""
     token_hash = hash_token(token)
     result = await db.execute(
         select(UserToken).where(
             UserToken.user_id == user_id,
-            UserToken.token_hash == token_hash
+            UserToken.token_hash == token_hash,
+            UserToken.revoked == False
         )
     )
     return result.scalar_one_or_none() is not None
-
-
 # ==================== DECODIFICACIÓN ====================
 def decode_token(token: str, expected_type: str) -> dict:
     try:

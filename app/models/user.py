@@ -2,6 +2,7 @@ from sqlalchemy import String, Integer, ForeignKey, DateTime, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 from datetime import datetime, timezone
+from typing import Optional
 
 
 
@@ -35,9 +36,10 @@ class UserToken(Base):
     server_default=func.now()  # <-- usa hora del servidor PostgreSQL
     )
 
-    revoked: Mapped[bool] = mapped_column(Boolean,default=False,nullable=False)
+    revoked: Mapped[bool] = mapped_column(Boolean,default=False,nullable=False)  
     
-    #a;adir multi-session
-    #device_name
-    #ip_adress
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=True)
+
+    device_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
