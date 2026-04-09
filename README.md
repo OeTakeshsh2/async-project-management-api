@@ -20,7 +20,7 @@ REST API with production-ready practices, built with FastAPI. Features JWT authe
 
 ## Project Structure
 
-```
+```text
 app/
 ├── core/      # Core logic: DB, security, auth, dependencies
 ├── models/    # SQLAlchemy ORM models
@@ -42,7 +42,7 @@ Dockerfile
 
 ```bash
 cp .env.example .env
-# edit .env with your own secrets
+edit .env with your own secrets
 ```
 
 2. **Start the containers**:
