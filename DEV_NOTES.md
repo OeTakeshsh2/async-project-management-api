@@ -206,4 +206,23 @@ La API no contaba con un endpoint de monitoreo que permitiera verificar su estad
 
 ---
 
+[Fecha] 09/04/2026
+
+## Problema
+El despliegue en Railway fallaba porque la variable `DATABASE_URL` usaba el driver síncrono `postgresql://`, incompatible con el uso de `asyncpg` en SQLAlchemy asíncrono.
+
+## Causa
+Railway inyecta por defecto una URL con `postgresql://` (sin `+asyncpg`). La aplicación esperaba un driver asíncrono para `create_async_engine`.
+
+## Solución
+- Se modificó manualmente la variable `DATABASE_URL` en el servicio de API de Railway, cambiando `postgresql://` por `postgresql+asyncpg://`.
+- Alternativamente, se agregó un validador en `app/core/config.py` que convierte automáticamente la URL al formato asíncrono si es necesario.
+- Se redeployó la aplicación.
+
+## Resultado
+- La aplicación arranca correctamente en Railway.
+- Las tablas se crean automáticamente mediante `Base.metadata.create_all`.
+- El endpoint `/health` responde `200 OK`.
+- La documentación Swagger está disponible en `/docs`.
+
 
