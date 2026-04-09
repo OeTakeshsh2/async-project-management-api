@@ -180,3 +180,30 @@ La aplicación carecía de un sistema de logging estructurado que permitiera ras
 ## Nota
 El nivel de log se puede cambiar entre `INFO` y `DEBUG` mediante la variable de entorno `LOG_LEVEL` (pendiente de implementar). Por ahora está fijo en `INFO` en `main.py`.
 
+---
+
+[Fecha] 09/04/2026
+
+## Problema
+La API no contaba con un endpoint de monitoreo que permitiera verificar su estado y el de la base de datos, tanto en desarrollo como en producción.
+
+## Causa
+- No existía un endpoint dedicado a health check.
+- No se validaba la conectividad con la base de datos desde la API.
+
+## Solución
+- Se creó el endpoint `GET /health` en `app/routes/health.py`.
+- El endpoint ejecuta una consulta simple `SELECT 1` a la base de datos.
+- Retorna `200 OK` con `{"status":"ok","database":"connected"}` si la base responde.
+- Si hay error, retorna `503 Service Unavailable` con `{"status":"degraded","database":"disconnected"}`.
+- Se registró el router en `app/main.py`.
+- Se agregaron logs de error en caso de falla.
+
+## Resultado
+- Ahora se puede monitorear la salud de la API y la base de datos mediante `GET /health`.
+- Útil para orquestadores (Docker, Kubernetes) y servicios de monitoreo.
+- Todos los tests siguen pasando.
+
+---
+
+
