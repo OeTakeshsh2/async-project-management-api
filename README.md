@@ -2,6 +2,15 @@
 
 REST API with production-ready practices, built with FastAPI. Features JWT authentication (access + refresh tokens), refresh token hashing, revocation, multi-session support, structured logging with correlation ID, and async database handling. Fully containerized with Docker and PostgreSQL.
 
+## Live Demo
+
+- API Base URL: https://async-project-management-api-production.up.railway.app
+- Swagger UI: https://async-project-management-api-production.up.railway.app/docs
+- ReDoc: https://async-project-management-api-production.up.railway.app/redoc
+
+> Note: This public deployment is intended for testing and portfolio purposes.
+> Feel free to register a temporary user and explore the API.
+
 ## Tech Stack
 
 - Python 3.14
@@ -131,38 +140,6 @@ Authorization: Bearer <refresh_token>
 
 *These endpoints expect the token in the Authorization header.*
 
-## Example requests with curl
-
-### Login
-
-curl -X POST http://localhost:8000/users/login \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=your@email.com&password=yourpassword"
-
-### Get current user (protected)
-
-curl -X GET http://localhost:8000/users/me \
-  -H "Authorization: Bearer <access_token>"
-
-### Refresh access token
-
-curl -X POST http://localhost:8000/users/refresh \
-  -H "Authorization: Bearer <refresh_token>"
-
-### List active sessions
-
-curl -X GET http://localhost:8000/users/sessions \
-  -H "Authorization: Bearer <access_token>"
-
-### Revoke a session (logout remote)
-
-curl -X DELETE http://localhost:8000/users/sessions/123 \
-  -H "Authorization: Bearer <access_token>"
-
-### Health check
-
-curl http://localhost:8000/health
-
 ## Database Design
 
 ### Users Table
@@ -224,31 +201,6 @@ The endpoint GET /health verifies the API and database connectivity:
 - Returns 200 OK with {"status":"ok","database":"connected"} if healthy.
 - Returns 503 Service Unavailable with {"status":"degraded","database":"disconnected"} on database error.
 - Used for container orchestration (Docker health checks, Kubernetes liveness probes).
-
-## Deployment
-
-The API is ready for production deployment. It has been successfully deployed on Railway (https://railway.app).
-
-### Deployment on Railway
-
-1. Create a new project on Railway and connect your GitHub repository.
-
-2. Add a PostgreSQL database via Railway's "Add Database" → PostgreSQL.
-
-3. Set the following environment variables in the API service:
-
-- SECRET_KEY (generate a strong random key)
-- ALGORITHM = HS256
-- ACCESS_TOKEN_EXPIRE_MINUTES = 15
-- DATABASE_URL – Railway injects it automatically, but ensure it uses postgresql+asyncpg:// (or the code converts it).
-
-4. The start command (configured in Railway) runs:
-
-alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-
-5. Railway builds the Docker image and deploys the application.
-
-The deployed API is publicly accessible with a URL like https://your-project.up.railway.app. The interactive documentation is available at /docs.
 
 ## Development Notes
 
