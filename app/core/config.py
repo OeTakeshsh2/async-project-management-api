@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 class Settings(BaseSettings):
-    """Configuración cargada desde .env"""
     secret_key: str
     algorithm: str
     access_token_expire_minutes: int
@@ -11,5 +11,12 @@ class Settings(BaseSettings):
         env_file=".env",
         extra="ignore"
     )
+
+    @field_validator('database_url')
+    @classmethod
+    def ensure_async_driver(cls, v: str) -> str:
+        if v.startswith('postgresql://') and '+asyncpg' not in v:
+            v = v.replace('postgresql://', 'postgresql+asyncpg://', 1)
+        return v
 
 settings = Settings()
