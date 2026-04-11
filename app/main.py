@@ -2,9 +2,9 @@ import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.core.database import engine, Base
-from app.routes import router          # router principal (users)
-from app.routes import health          
-from app.core.config import settings   
+from app.routes import router,health       # router principal (users)
+from app.routes.payment_links import router as payment_links_router # se cambio importacion con alias porque no cargaba directamente como router
+from app.core.config import settings
 from app.core.logging import setup_logging, app_logger
 from app.middleware.correlation import CorrelationIdMiddleware
 
@@ -43,6 +43,7 @@ app.add_middleware(CorrelationIdMiddleware)
 # incluir routers
 app.include_router(health.router)
 app.include_router(router)
+app.include_router(payment_links_router)
 
 @app.get("/")
 def root():

@@ -255,3 +255,66 @@ Los endpoints `/login`, `/refresh` y `/logout` usaban mecanismos confusos para e
 
 ## Nota
 Se mantiene la lógica de negocio original (generación de tokens, almacenamiento de hashes, revocación, multi‑sesión). Solo cambió la interfaz de entrada.
+
+---
+
+[Fecha] 11/04/2026
+
+## Problema
+Se requiere evolucionar la API hacia un sistema de pagos headless (Plug & Play Payment Links). Para ello es necesario añadir Redis, Celery, modelos de pago, endpoints básicos y asegurar que el despliegue en Railway funcione correctamente.
+
+## Causa
+- La aplicación no tenía soporte para tareas asíncronas (emails, webhooks).
+- Faltaban las tablas `payment_links`, `payments`, `events`.
+- El despliegue en Railway fallaba por falta de los esquemas `LoginRequest`, `RefreshRequest`, `LogoutRequest` (añadidos en el paso anterior pero no subidos correctamente).
+- El modelo `PaymentLink` usaba el nombre `metadata`, que está reservado por SQLAlchemy.
+
+## Solución
+
+### 1. Configuración de Redis y Celery
+- Se agregaron las dependencias `redis`, `celery`, `stripe` a `pyproject.toml`.
+- Se configuró Redis en `docker-compose.yml` (puerto 6379).
+- Se creó `app/workers/celery_app.py` y `app/workers/tasks.py` con una tarea de ejemplo.
+- Se añadió `redis_url` a `Settings` en `config.py` (sin valor por defecto, obligatorio desde `.env`).
+- Se probó el worker localmente con `celery -A app.workers.celery_app worker`.
+
+### 2. Modelos de pago y eventos
+- Se crearon `app/models/payment_link.py`, `payment.py`, `event.py` usando SQLAlchemy 2.0 (`Mapped`, `mapped_column`).
+- Se reemplazó `metadata` por `extra_data` para evitar conflicto con palabra reservada.
+- Se generó y aplicó la migración Alembic (`add_payment_tables_fixed`).
+
+### 3. Esquemas Pydantic y endpoints
+- Se creó `app/schemas/payment_link.py` con `PaymentLinkCreate` y `PaymentLinkResponse`.
+- Se creó `app/routes/payment_links.py` con el endpoint `POST /payment-links` (protegido con JWT).
+- Se registró el router en `app/main.py`.
+- Se corrigió el uso de `data.metadata` por `data.extra_data` en el endpoint.
+
+### 4. Corrección del despliegue en Railway
+- Se verificó que los esquemas `LoginRequest`, `RefreshRequest`, `LogoutRequest` estuvieran en `app/schemas/user.py` (faltaban en el repositorio remoto).
+- Se hizo push de los cambios y Railway redeployó correctamente.
+- Se actualizó la variable `REDIS_URL` en Railway para conectar con el servicio Redis añadido.
+
+### 5. Prueba de creación de payment link
+- Se autenticó un usuario (`cafe@gato.com`) y se obtuvo `access_token`.
+- Se llamó a `POST /payment-links` con el token y se recibió respuesta exitosa:
+  ```json
+  {"id":1,"title":"Consultoría","amount":15000.0,"currency":"CLP","type":"fixed","status":"active","public_id":"091f598d","created_at":"2026-04-11T14:52:12.428287Z","extra_data":{}}
+
+## Resultado
+
+- Redis y Celery operativos en desarrollo local (y listos para producción).
+
+- Modelos de pago creados y migrados.
+
+- Endpoint de creación de payment links funcionando con autenticación JWT.
+
+- Despliegue en Railway restablecido y funcionando.
+
+- El sistema está preparado para la siguiente fase: integración con pasarelas de pago (Stripe) y webhooks.
+
+## Nota
+
+- El worker de Celery aún no se despliega en Railway; se añadirá como un servicio separado en el futuro.
+
+- Los endpoints de listado, detalle y página pública (/pay/{public_id}) se implementarán en la próxima iteración.
+
