@@ -318,3 +318,59 @@ Se requiere evolucionar la API hacia un sistema de pagos headless (Plug & Play P
 
 - Los endpoints de listado, detalle y página pública (/pay/{public_id}) se implementarán en la próxima iteración.
 
+---
+
+[Fecha] 11/04/2026 (2)
+
+## Problema
+Se necesita integrar una pasarela de pagos real (Stripe) para que los payment links creados permitan a los compradores pagar con tarjeta. Además, se requiere manejar webhooks para actualizar el estado de los pagos y emitir eventos internos.
+
+## Causa
+- No existía integración con Stripe.
+- Los endpoints de payment links solo almacenaban datos, no generaban sesiones de pago.
+- No se gestionaban eventos de éxito/fracaso de pagos.
+
+## Solución
+
+### 1. Integración de Stripe
+- Se añadieron las variables de entorno `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` (en `.env` y en Railway).
+- Se instaló la librería `stripe` (ya estaba).
+- Se creó el endpoint público `GET /pay/{public_id}` que:
+  - Busca el `PaymentLink` por `public_id`.
+  - Crea una sesión de Stripe Checkout con el monto, título y moneda.
+  - Redirige al usuario a `session.url` (devuelve la URL en JSON).
+- Se registró el router en `app/main.py`.
+
+### 2. Webhook de Stripe
+- Se creó el endpoint `POST /webhooks/stripe` que:
+  - Verifica la firma del webhook usando la clave `STRIPE_WEBHOOK_SECRET`.
+  - Escucha el evento `checkout.session.completed`.
+  - Actualiza la tabla `payments` (crea un registro si no existe, o lo marca como `succeeded`).
+  - Emite un evento interno (se guarda en la tabla `events` con tipo `payment.succeeded`).
+
+### 3. Modelo `Payment` y tabla `payments`
+- Se creó el modelo `Payment` en `app/models/payment.py` con los campos: `id`, `payment_link_id`, `provider`, `provider_payment_id`, `amount`, `currency`, `status`, `metadata`, `created_at`, `updated_at`.
+- Se generó la migración correspondiente y se aplicó.
+
+### 4. Endpoints adicionales de payment links
+- Se añadió `GET /payment-links` para listar los links del usuario autenticado.
+- Se mejoró la respuesta de creación incluyendo el `public_id` generado.
+
+### 5. Despliegue en Railway
+- Se agregó el servicio Redis a Railway (necesario para Celery en el futuro).
+- Se configuraron las variables de entorno `REDIS_URL`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`.
+- Se redeployó la aplicación; todos los endpoints funcionan correctamente en producción.
+
+## Resultado
+- El sistema ya permite crear payment links y procesar pagos reales con Stripe (modo test).
+- Los pagos exitosos actualizan el estado en la base de datos y generan eventos.
+- La API está desplegada en Railway y accesible públicamente.
+- El flujo completo es: crear link → compartir URL pública → cliente paga → webhook actualiza estado.
+
+## Próximos pasos
+- Implementar workers de Celery para procesar eventos (enviar emails, notificaciones).
+- Añadir soporte para MercadoPago.
+- Construir un SDK oficial (Python, JavaScript).
+
+---
+

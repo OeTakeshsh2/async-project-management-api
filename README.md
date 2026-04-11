@@ -4,10 +4,9 @@ REST API with production-ready practices, built with FastAPI. Features JWT authe
 
 ## Live Demo
 
-- API Base URL: https://async-project-management-api-production.up.railway.app
-- Swagger UI: https://async-project-management-api-production.up.railway.app/docs
-- ReDoc: https://async-project-management-api-production.up.railway.app/redoc
-
+- API Base URL:https://auth-paylink-engine-production.up.railway.app/ 
+- Swagger UI:https://auth-paylink-engine-production.up.railway.app/docs
+- ReDoc:https://auth-paylink-engine-production.up.railway.app/redoc
 > Note: This public deployment is intended for testing and portfolio purposes.
 > Feel free to register a temporary user and explore the API.
 
