@@ -225,4 +225,33 @@ Railway inyecta por defecto una URL con `postgresql://` (sin `+asyncpg`). La apl
 - El endpoint `/health` responde `200 OK`.
 - La documentación Swagger está disponible en `/docs`.
 
+---
 
+[Fecha] 10/04/2026
+
+## Problema
+Los endpoints `/login`, `/refresh` y `/logout` usaban mecanismos confusos para el usuario:
+- `/login` utilizaba `OAuth2PasswordRequestForm`, que mostraba campos irrelevantes en Swagger (`grant_type`, `scope`, `client_id`, `client_secret`).
+- `/refresh` y `/logout` esperaban el token en el header `Authorization`, lo que obligaba a usar el botón "Authorize" en Swagger y dificultaba las pruebas manuales.
+- Los tests enviaban los datos en formato `data=` (form) o en headers, no en JSON.
+
+## Causa
+- Se había adoptado el estándar OAuth2 password flow sin necesidad real.
+- No se diseñaron esquemas Pydantic explícitos para la entrada de estos endpoints.
+
+## Solución
+- Se crearon los esquemas `LoginRequest`, `RefreshRequest` y `LogoutRequest` en `app/schemas/user.py`.
+- Se modificaron los endpoints para recibir JSON en lugar de form data o headers.
+- Se eliminaron las dependencias `OAuth2PasswordRequestForm`, `OAuth2PasswordBearer` y `oauth2_scheme` (ya no se usan).
+- Se mejoraron los logs en `/logout` (se agrega verificación opcional del token y advertencias).
+- Se actualizaron todos los tests en `tests/integration/test_users.py` para usar `json=` en lugar de `data=` o headers.
+- Se corrigió `test_refresh_token` para que use el usuario correcto.
+
+## Resultado
+- Swagger ahora muestra campos limpios y editables para cada endpoint.
+- La API es más intuitiva para desarrolladores externos.
+- Los tests pasan correctamente (10/10).
+- El código es más mantenible al eliminar dependencias innecesarias.
+
+## Nota
+Se mantiene la lógica de negocio original (generación de tokens, almacenamiento de hashes, revocación, multi‑sesión). Solo cambió la interfaz de entrada.

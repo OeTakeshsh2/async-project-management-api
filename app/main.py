@@ -3,8 +3,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.core.database import engine, Base
 from app.routes import router          # router principal (users)
-from app.routes import health          # health check
-from app.core.config import settings   # ← corregido: desde config, no auth
+from app.routes import health          
+from app.core.config import settings   
 from app.core.logging import setup_logging, app_logger
 from app.middleware.correlation import CorrelationIdMiddleware
 
@@ -27,7 +27,6 @@ async def lifespan(_: FastAPI):
     else:
         print("could not connect to the database")
     yield
-    # shutdown (opcional)
 
 # crear app una sola vez
 app = FastAPI(
@@ -43,7 +42,7 @@ app.add_middleware(CorrelationIdMiddleware)
 
 # incluir routers
 app.include_router(health.router)
-app.include_router(router)   # router principal (users)
+app.include_router(router)
 
 @app.get("/")
 def root():

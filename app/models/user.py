@@ -42,4 +42,7 @@ class UserToken(Base):
 
     device_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+            DateTime(timezone=True),
+            nullable=True)
+

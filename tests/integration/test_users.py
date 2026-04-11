@@ -1,6 +1,5 @@
 import pytest
 import pytest_asyncio
-import asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.main import app
@@ -36,7 +35,7 @@ async def client():
 async def create_user(client: AsyncClient, email: str, password: str):
     return await client.post("/users/", json={"email": email, "password": password})
 
-#test endpoint create_user
+# test endpoint create_user
 @pytest.mark.asyncio
 async def test_create_user(client: AsyncClient):
     response = await create_user(client, "test@example.com", "secret123")
@@ -45,14 +44,11 @@ async def test_create_user(client: AsyncClient):
     assert data["email"] == "test@example.com"
     assert "id" in data
 
-
-#tests endpoint login - login success
+# test endpoint login - login success
 @pytest.mark.asyncio
 async def test_login_success(client: AsyncClient):
-    # Crear usuario
     await create_user(client, "login@example.com", "mypass")
-    # Intentar login
-    response = await client.post("/users/login", data={
+    response = await client.post("/users/login", json={
         "username": "login@example.com",
         "password": "mypass"
     })
@@ -62,38 +58,35 @@ async def test_login_success(client: AsyncClient):
     assert "refresh_token" in data
     assert data["token_type"] == "bearer"
 
-#invalid password
+# invalid password
 @pytest.mark.asyncio
 async def test_login_invalid_password(client: AsyncClient):
     await create_user(client, "wrongpass@example.com", "correctpass")
-    response = await client.post("/users/login", data={
+    response = await client.post("/users/login", json={
         "username": "wrongpass@example.com",
         "password": "badpass"
     })
     assert response.status_code == 401
     assert "detail" in response.json()
 
-#user not found
+# user not found
 @pytest.mark.asyncio
 async def test_login_user_not_found(client: AsyncClient):
-    response = await client.post("/users/login", data={
+    response = await client.post("/users/login", json={
         "username": "nonexistent@example.com",
         "password": "anything"
     })
     assert response.status_code == 401
 
-
-#test endpoint /me
+# test endpoint /me
 @pytest.mark.asyncio
 async def test_get_me(client: AsyncClient):
-    # Crear y loguear
     await create_user(client, "me@example.com", "test123")
-    login_resp = await client.post("/users/login", data={
+    login_resp = await client.post("/users/login", json={
         "username": "me@example.com",
         "password": "test123"
     })
     access_token = login_resp.json()["access_token"]
-    # Llamar a /me
     response = await client.get("/users/me", headers={
         "Authorization": f"Bearer {access_token}"
     })
@@ -102,24 +95,21 @@ async def test_get_me(client: AsyncClient):
     assert data["email"] == "me@example.com"
     assert "id" in data
 
-
 @pytest.mark.asyncio
 async def test_get_me_unauthorized(client: AsyncClient):
     response = await client.get("/users/me")
-    assert response.status_code == 401  # No token
+    assert response.status_code == 401
 
 # test endpoint refresh token
 @pytest.mark.asyncio
 async def test_refresh_token(client: AsyncClient):
     await create_user(client, "refresh@example.com", "pass")
-    login = await client.post("/users/login", data={
+    login = await client.post("/users/login", json={
         "username": "refresh@example.com",
         "password": "pass"
     })
     refresh_token = login.json()["refresh_token"]
-    # Refrescar
-    
-    refresh_resp = await client.post("/users/refresh", headers={"Authorization": f"Bearer {refresh_token}"})
+    refresh_resp = await client.post("/users/refresh", json={"refresh_token": refresh_token})
     assert refresh_resp.status_code == 200
     new_access = refresh_resp.json()["access_token"]
     assert new_access != login.json()["access_token"]
@@ -136,26 +126,28 @@ async def test_refresh_with_invalid_token(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_logout(client: AsyncClient):
     await create_user(client, "logout@example.com", "pass")
-    login = await client.post("/users/login", data={
+    login = await client.post("/users/login", json={
         "username": "logout@example.com",
         "password": "pass"
     })
     refresh_token = login.json()["refresh_token"]
-    # Logout
-    logout_resp = await client.post("/users/logout", headers={"Authorization": f"Bearer {refresh_token}"})
+    logout_resp = await client.post("/users/logout", json={"refresh_token": refresh_token})
     assert logout_resp.status_code == 200
     # Intentar refrescar con el mismo token debería fallar
     refresh_resp = await client.post("/users/refresh", json={"refresh_token": refresh_token})
     assert refresh_resp.status_code == 401
 
-# probar todo el flujo
+# test full flow
 @pytest.mark.asyncio
 async def test_full_flow(client: AsyncClient):
     # 1. Registrar
     reg = await client.post("/users/", json={"email": "flow@example.com", "password": "flowpass"})
     assert reg.status_code == 200
     # 2. Login
-    login = await client.post("/users/login", data={"username": "flow@example.com", "password": "flowpass"})
+    login = await client.post("/users/login", json={
+        "username": "flow@example.com",
+        "password": "flowpass"
+    })
     assert login.status_code == 200
     tokens = login.json()
     access = tokens["access_token"]
@@ -165,14 +157,14 @@ async def test_full_flow(client: AsyncClient):
     assert me.status_code == 200
     assert me.json()["email"] == "flow@example.com"
     # 4. Refrescar token
-    refresh_resp = await client.post("/users/refresh", headers={"Authorization" : f"Bearer {refresh}"}) 
+    refresh_resp = await client.post("/users/refresh", json={"refresh_token": refresh})
     assert refresh_resp.status_code == 200
     new_access = refresh_resp.json()["access_token"]
     # 5. Probar nuevo access token
     me2 = await client.get("/users/me", headers={"Authorization": f"Bearer {new_access}"})
     assert me2.status_code == 200
     # 6. Logout
-    logout = await client.post("/users/logout", headers={"Authorization": f"Bearer {refresh}"})
+    logout = await client.post("/users/logout", json={"refresh_token": refresh})
     assert logout.status_code == 200
     # 7. Verificar que refresh ya no sirve
     refresh_fail = await client.post("/users/refresh", json={"refresh_token": refresh})

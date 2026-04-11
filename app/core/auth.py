@@ -7,7 +7,7 @@ from jose import jwt, JWTError, ExpiredSignatureError
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import Base, get_db
@@ -24,6 +24,10 @@ def hash_token(token: str) -> str:
 
 
 # ==================== CREACIÓN DE TOKENS ====================
+"""
+REFACTORIZAR!!!
+"""
+
 def create_access_token(data: dict) -> str:
     if "sub" not in data or "user_id" not in data:
         raise ValueError("El payload requiere 'sub' y 'user_id'.")
@@ -33,7 +37,7 @@ def create_access_token(data: dict) -> str:
     to_encode.update({
         "exp": expire,
         "iat": now,
-        "jti": str(uuid.uuid4()),   # ← unico por token
+        "jti": str(uuid.uuid4()),
         "type": "access"
     })
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
