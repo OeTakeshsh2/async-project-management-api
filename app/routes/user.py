@@ -19,7 +19,7 @@ from app.models.user import User
 from app.schemas.user import(
     LoginRequest,
     LogoutRequest,
-    UserCreate,     # <== mod enpoints importados de schemas
+    UserCreate,
     UserResponse,
     RefreshRequest
 )
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post("/login")
 async def login(
-    login_data: LoginRequest,# <- cambio a custom form, oauth2password era medio confuso para el user
+    login_data: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):
     app_logger.info(f"login attempt: {login_data.username}")
@@ -64,27 +64,22 @@ async def login(
 
 @router.post("/logout")
 async def logout(
-    data:LogoutRequest, # <== mismo cambio aca, mejor experiencia de usuario
+    data: LogoutRequest,
     db: AsyncSession = Depends(get_db)
 ):
-
     token = data.refresh_token
     app_logger.info("logout attempt")
-    
+
     try:
         payload = decode_refresh_token(token)
     except HTTPException as e:
         app_logger.warning(f"logout failed: invalid token format - {e.detail}")
         raise
+
     user_id = payload.get("user_id")
     if user_id is None:
         app_logger.warning("logout failed: user_id not found in token")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="token invalido: user_id no encontrado"
-        )
-
-    #token existe?, esta revocado?
+        raise HTTPException(401, "token invalido: user_id no encontrado")
 
     is_valid = await verify_refresh_token(db, user_id, token)
     if not is_valid:
@@ -133,10 +128,10 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 @router.post("/refresh")
 async def refresh_token(
-    data: RefreshRequest, # cambiado (antes -> oauth2)
+    data: RefreshRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    token =data.refresh_token
+    token = data.refresh_token
     app_logger.info("refresh token attempt")
 
     try:
@@ -144,18 +139,17 @@ async def refresh_token(
     except HTTPException as e:
         app_logger.warning(f"refresh token decode failed: {e.detail}")
         raise
+
     user_id = payload["user_id"]
     if not await verify_refresh_token(db, user_id, token):
-        app_logger.warning(f"refresh token failed to user_id {user_id}: in valid or revoked")
-        raise HTTPException(401,"token de refresco invalido o revocado")
+        app_logger.warning(f"refresh token failed for user_id {user_id}: invalid or revoked")
+        raise HTTPException(401, "token de refresco invalido o revocado")
+
     result = await db.execute(select(User).where(User.id == user_id))
     db_user = result.scalar_one_or_none()
     if not db_user:
         app_logger.warning(f"refresh token failed: user {user_id} not found")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="usuario no identificado"
-        )
+        raise HTTPException(401, "usuario no identificado")
 
     new_access_token = create_user_access_token(db_user)
     app_logger.info(f"refresh token success for user_id {user_id}")
