@@ -175,3 +175,8 @@ Thumbs.db
 # Docker (optional overrides)
 # =========================
 docker-compose.override.yml
+
+# ==========================
+# DOC/ others (dev oriented)
+# ==========================
+OLD_README.md
