@@ -1,3 +1,4 @@
+import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -8,6 +9,7 @@ from app.models.payment_link import PaymentLink
 from app.schemas.payment_link import PaymentLinkCreate, PaymentLinkResponse
 from app.core.logging import app_logger
 from uuid import uuid4
+from app.core.config import settings
 
 router = APIRouter(prefix="/payment-links", tags=["payment-links"])
 
@@ -44,3 +46,45 @@ async def list_payment_links(
     )
     links = result.scalars().all()
     return links
+
+@router.get("/pay/{public_id}")
+async def get_payment_link_public(
+    public_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Endpoint público para crear una sesión de Stripe Checkout y redirigir al pago."""
+    # Buscar el payment link por public_id
+    result = await db.execute(
+        select(PaymentLink).where(PaymentLink.public_id == public_id, PaymentLink.status == "active")
+    )
+    link = result.scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=404, detail="Payment link not found")
+
+    # Configurar Stripe con la clave secreta
+    stripe.api_key = settings.stripe_secret_key
+
+    # Crear sesión de Checkout
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": link.currency.lower(),
+                    "product_data": {"name": link.title},
+                    "unit_amount": int(link.amount * 100),  # Stripe usa centavos
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url="https://tu-sitio.com/success",   # Cambia por tu URL real
+            cancel_url="https://tu-sitio.com/cancel",
+            metadata={
+                "payment_link_id": str(link.id),
+                "public_id": public_id,
+            }
+        )
+        return {"checkout_url": session.url}
+    except Exception as e:
+        app_logger.error(f"Stripe checkout error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error creating payment session")

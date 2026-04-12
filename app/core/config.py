@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int
     database_url: str
     redis_url: str
+    stripe_secret_key: str
+    stripe_webhook_secret: str
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

@@ -373,4 +373,48 @@ Se necesita integrar una pasarela de pagos real (Stripe) para que los payment li
 - Construir un SDK oficial (Python, JavaScript).
 
 ---
+[Fecha] 11/04/2026 (3)
+
+## Problema
+Se requiere integrar Stripe como pasarela de pago para los payment links, permitiendo a los compradores pagar con tarjeta y actualizar el estado del pago mediante webhooks.
+
+## Causa
+- No existía integración con Stripe.
+- Los endpoints de payment links solo almacenaban datos, no generaban sesiones de pago.
+- No se gestionaban eventos de éxito/fracaso de pagos.
+
+## Solución
+
+### 1. Dependencias y configuración
+- Se añadió `stripe` al proyecto (`poetry add stripe`).
+- Se configuraron las variables de entorno: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`.
+- Se instaló y configuró Stripe CLI para desarrollo local (`stripe listen --forward-to localhost:8000/webhooks/stripe`).
+
+### 2. Endpoint público de pago
+- Se creó `GET /pay/{public_id}` en `app/routes/payment_links.py`.
+- Busca el `PaymentLink` por `public_id` y crea una sesión de Stripe Checkout.
+- Devuelve la URL de Stripe para que el comprador realice el pago.
+
+### 3. Webhook de Stripe
+- Se creó el endpoint `POST /webhooks/stripe` en `app/routes/webhooks.py`.
+- Verifica la firma del webhook con `stripe.Webhook.construct_event`.
+- Escucha eventos `checkout.session.completed` y `checkout.session.expired`.
+- Actualiza la tabla `payments` (crea o actualiza registro) y emite eventos internos en la tabla `events`.
+
+### 4. Prueba local exitosa
+- Se creó un usuario, se generó un payment link, se obtuvo la URL de Stripe Checkout.
+- Se pagó con tarjeta de prueba `4242 4242 4242 4242`.
+- El webhook local (Stripe CLI) recibió el evento y la API actualizó el estado del pago en la base de datos.
+
+## Resultado
+- El sistema ya permite procesar pagos reales con Stripe en modo test.
+- El flujo completo es: crear link → compartir URL → cliente paga → webhook actualiza estado.
+- La API está lista para desplegar en Railway con el webhook de producción configurado en Stripe Dashboard.
+
+## Nota
+- Para producción, se debe crear un webhook aparte en Stripe Dashboard con la URL pública de Railway y usar su propio secreto (`STRIPE_WEBHOOK_SECRET`).
+- La CLI de Stripe se usa solo para desarrollo local.
+
+---
+
 
