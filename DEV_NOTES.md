@@ -417,4 +417,29 @@ Se requiere integrar Stripe como pasarela de pago para los payment links, permit
 
 ---
 
+[Fecha] 13/04/2026
 
+## Problema
+Se necesita exponer los pagos realizados por los usuarios a través de la API, para que puedan consultar su historial y el detalle de cada transacción.
+
+## Causa
+- No existían endpoints para listar pagos ni para ver el detalle de un pago específico.
+- Los endpoints de listado de payment links no tenían paginación.
+
+## Solución
+- Se creó el esquema `PaymentResponse` en `app/schemas/payment.py`.
+- Se implementó el endpoint `GET /payment-links/payments` que lista todos los pagos del usuario autenticado (con paginación `skip`/`limit` y orden descendente por fecha).
+- Se implementó el endpoint `GET /payment-links/payments/{payment_id}` que devuelve el detalle de un pago específico (verificando que pertenezca al usuario).
+- Se añadió paginación a `GET /payment-links` (parámetros `skip` y `limit`).
+- Se corrigió la importación de `Optional` (debe venir de `typing`, no de `pydantic`).
+
+## Resultado
+- Los usuarios pueden consultar su historial de pagos y el detalle de cada transacción.
+- Los endpoints de listado ahora soportan paginación, mejorando el rendimiento y la usabilidad.
+- La API está más completa para integrarse con frontends o servicios externos.
+
+## Nota
+- Los nuevos endpoints requieren autenticación (access token).
+- La paginación usa `skip` (registros a saltar) y `limit` (máximo de registros por página).
+
+---

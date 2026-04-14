@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
+from typing import Optional
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -33,3 +34,5 @@ class RefreshRequest(BaseModel):
 
 class LogoutRequest(BaseModel):
     refresh_token: str
+
+
