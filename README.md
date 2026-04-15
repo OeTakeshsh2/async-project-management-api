@@ -1,51 +1,132 @@
-# Auth & Payment Links API 🚀
+# 🔐💳 Headless Payment Link Engine + JWT Auth
 
-REST API with JWT authentication (access + refresh tokens), multi‑session support, and a headless payment link engine powered by Stripe. Fully containerized with Docker and PostgreSQL.
+**Production-ready backend combining secure JWT authentication (with multi-session support) and a headless Stripe payment link engine.**
 
-## Live Demo
+Generate payment links in seconds, charge customers without a frontend, and get automatic updates via webhooks. Built as a scalable foundation for SaaS products, marketplaces, or any app that needs fast and secure billing.
 
-- **Base URL**: [https://auth-paylink-engine-production.up.railway.app/](https://auth-paylink-engine-production.up.railway.app/)
-- **Swagger UI**: [https://auth-paylink-engine-production.up.railway.app/docs](https://auth-paylink-engine-production.up.railway.app/docs)
-- **ReDoc**: [https://auth-paylink-engine-production.up.railway.app/redoc](https://auth-paylink-engine-production.up.railway.app/redoc)
+---
 
-> This public deployment is intended for testing and portfolio purposes.  
-> Feel free to register a temporary user and explore the API.
+## 🌐 Live Demo
+
+- **Base URL**: https://auth-paylink-engine-production.up.railway.app/
+- **Swagger UI**: https://auth-paylink-engine-production.up.railway.app/docs
+- **ReDoc**: https://auth-paylink-engine-production.up.railway.app/redoc
+
+> This deployment is for demonstration and portfolio purposes only.
+
+---
+
+## Local Dev (Requires Stripe Test Keys):
+
+```bash
+cp .env.example .env
+docker-compose up
+```
+Make sure to add your Stripe & Postgres keys in .env
+
+Use Stripe CLI to forward webhooks:
+ 
+stripe listen --forward-to localhost:8000/webhooks/stripe
+
+## Key Features
+
+- JWT Authentication (access + refresh tokens)
+- Multi-session support (multiple devices at the same time)
+- Secure refresh token storage (SHA256 hashed — never plain text)
+- Token revocation per session + remote logout
+- **Headless Stripe Payment Link Engine**
+- Automatic payment status updates via Stripe Webhooks
+- Fully async FastAPI architecture
+- Dockerized for production
+- PostgreSQL + Redis + Celery background tasks
+- Production-ready logging with Correlation IDs
+
+---
+
+## Payment Link Engine (Headless Billing)
+
+A Stripe-powered system that lets you create and manage payment links without building your own checkout page.
+
+### How it works
+
+1. Create a payment link via the API  
+2. Share the public link `/pay/{public_id}` with your customer  
+3. Customer completes payment on **Stripe Checkout**  
+4. Stripe sends a webhook → payment status is automatically updated in your database
+
+---
+
+## Payment Link Endpoints
+
+| Method | Endpoint              | Auth | Description                          |
+|--------|-----------------------|------|--------------------------------------|
+| POST   | `/payment-links/`     | ✅   | Create a new payment link            |
+| GET    | `/payment-links/`     | ✅   | List all payment links               |
+| GET    | `/pay/{public_id}`    | ❌   | Public checkout page (no auth)       |
+| POST   | `/webhooks/stripe`    | ❌   | Stripe webhook handler               |
+
+---
 
 ## Tech Stack
 
-- Python 3.14 + FastAPI (async)
-- SQLAlchemy 2.0 + asyncpg
-- PostgreSQL + Redis + Celery
-- JWT (python‑jose), bcrypt
-- Stripe SDK
-- Docker, Poetry, pytest
+**Backend**  
+- Python 3.14 + FastAPI (async)  
+- SQLAlchemy 2.0  
 
-## API Endpoints (Summary)
+**Database**  
+- PostgreSQL (asyncpg)  
+- Redis  
 
-| Method | Endpoint                     | Auth required | Description                                      |
-| ------ | ---------------------------- | ------------- | ------------------------------------------------ |
-| POST   | `/users/`                    | ❌             | Create a new user                                |
-| POST   | `/users/login`               | ❌             | Authenticate, get access & refresh tokens        |
-| POST   | `/users/refresh`             | ❌*            | Get new access token (requires refresh token)    |
-| POST   | `/users/logout`              | ❌*            | Revoke the current refresh token                 |
-| GET    | `/users/me`                  | ✅             | Get current user info                            |
-| GET    | `/health`                    | ❌             | Health check (API + DB status)                   |
+**Authentication**  
+- JWT (python-jose) + bcrypt  
 
-*These endpoints expect the token in the `Authorization: Bearer <token>` header.*
+**Payments**  
+- Stripe SDK  
 
-**Authentication security**: Refresh tokens are stored as SHA256 hashes, never in plain text. Each token contains a unique `jti` (UUID) to guarantee individuality and support fine‑grained revocation. Multi‑session is fully supported: every login creates a new refresh token without invalidating previous ones, allowing users to stay connected across multiple devices. Tokens can be revoked individually via the logout endpoint, and sessions can be listed and remotely revoked using dedicated endpoints.
+**DevOps**  
+- Docker + Docker Compose  
+- Poetry  
+- Alembic migrations  
+- pytest  
 
-## Payment Links (Headless Billing)
+---
 
-| Method | Endpoint                       | Auth required | Description                                      |
-| ------ | ------------------------------ | ------------- | ------------------------------------------------ |
-| POST   | `/payment-links/`              | ✅ (access)    | Create a new payment link                        |
-| GET    | `/payment-links/`              | ✅ (access)    | List all payment links for the authenticated user |
-| GET    | `/pay/{public_id}`             | ❌             | Public endpoint – returns Stripe Checkout URL    |
-| POST   | `/webhooks/stripe`             | ❌ (webhook)   | Stripe webhook to update payment status          |
+## API Overview
 
-After creating a payment link, share the public URL (`/pay/{public_id}`) with your customer. They pay via Stripe Checkout (test cards: `4242 4242 4242 4242`). Your application receives a webhook and updates the payment status automatically.
+### Authentication
 
+| Method | Endpoint           | Description              |
+|--------|--------------------|--------------------------|
+| POST   | `/users/`          | Register                 |
+| POST   | `/users/login`     | Login                    |
+| POST   | `/users/refresh`   | Refresh token            |
+| POST   | `/users/logout`    | Logout                   |
+| GET    | `/users/me`        | Current user             |
+
+### Sessions
+
+| Method | Endpoint                    | Description                     |
+|--------|-----------------------------|---------------------------------|
+| GET    | `/users/sessions`           | List active sessions            |
+| DELETE | `/users/sessions/{id}`      | Revoke specific session         |
+
+### System
+
+| Method | Endpoint   | Description     |
+|--------|------------|-----------------|
+| GET    | `/health`  | Health check    |
+
+---
+
+## Security
+
+- Refresh tokens stored as SHA256 hashes (never plain text)  
+- Unique `jti` (UUID) for every token  
+- Full multi-session support  
+- Per-session token revocation  
+- Strict validation (type + expiration)  
+- Correlation ID logging for full request tracing  
+
+---
 ## Author
-
-Backend developer building secure, scalable APIs with Python.
+Backend developer specialized in building secure, scalable, and production-ready APIs with Python and FastAPI.
